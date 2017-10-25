@@ -15,17 +15,9 @@ from selenium.webdriver.support.events import AbstractEventListener
 from bs4 import BeautifulSoup
 import json
 import yaml
+from slackclient import SlackClient
 
 FORMAT = "%Y-%m-%d %H:%M:%S"
-
-#loading credentials
-with open("credentials.yaml","r") as stream:
-    try:
-        credentials = yaml.load(stream)
-        globals().update(credentials)
-    except yaml.YAMLError as exc:
-        print(exc)
-
 
 def post_remindar(token,text,time,user):
     text = "meeting"
@@ -66,6 +58,20 @@ class ScreenshotListener(AbstractEventListener):
         print("Screenshot saved as '%s'" % screenshot_name)
 
 #main starts here
+
+#defalut value
+SLACK_TOKEN = ''
+SLACK_USER_ID = ''
+#loading credentials
+with open("credentials.yaml","r") as stream:
+    try:
+        credentials = yaml.load(stream)
+        globals().update(credentials)
+    except yaml.YAMLError as exc:
+        print(exc)
+
+sc = SlackClient(SLACK_TOKEN)
+
 
 _driver = webdriver.PhantomJS()
 driver = EventFiringWebDriver(_driver, ScreenshotListener())
@@ -109,7 +115,7 @@ else:
     print("going for page2 again")
     driver.get("https://gws44.j-motto.co.jp/cgi-bin/JM0344760/dneo.cgi?")
     driver.implicitly_wait(10)
-rows = table.find_all()
+rows = table.find_all() #this raises AttributeError: 'NoneType' object has no attribute 'find_all'
 lists = []
 for row in rows:
     lst = []
@@ -132,6 +138,16 @@ out = parse_schedule(str_for_today)
 #with open('out2.json', 'w') as fh:
 #  fh.write(out_text.encode("utf-8"))
 
+current_reminders = sc.api_call(
+  "reminders.list",
+  channel="#zzz-slack-sandbox",
+  token=SLACK_TOKEN
+)
+
+filtered_reminders = list(filter((lambda x: (x.get('complete_ts') == 0) and x.get('recurring') == False),current_reminders.get('reminders')))
+
+
+
 for schedule_item in out:
     start_time, end_time, title = schedule_item
     print(start_time)
@@ -143,4 +159,12 @@ for schedule_item in out:
 
     unixtime = time.mktime( start_minus_5min.timetuple() )
     response = post_remindar(SLACK_TOKEN,title,unixtime,SLACK_USER_ID)
+    
+    sc.api_call(
+      "chat.postEphemeral",
+      channel="#zzz-slack-sandbox",
+      text=title,
+      user=SLACK_USER_ID
+    )
+    
     print(response)

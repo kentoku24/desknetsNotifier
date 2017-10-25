@@ -32,6 +32,7 @@ lst = sc.api_call(
   token=SLACK_TOKEN
 )
 
+
 filtered = list(filter((lambda x: (x.get('complete_ts') == 0) and x.get('recurring') == False),lst.get('reminders')))
 
 
