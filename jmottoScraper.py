@@ -1,4 +1,6 @@
 #coding:UTF-8
+from __future__ import absolute_import, division, print_function
+
 import json
 import re
 
@@ -76,7 +78,7 @@ sc = SlackClient(SLACK_TOKEN)
 _driver = webdriver.PhantomJS()
 driver = EventFiringWebDriver(_driver, ScreenshotListener())
 
-print 'drive start'
+print( 'drive start' )
 url = "https://www1.j-motto.co.jp/fw/dfw/po80/portal/jsp/J10201.jsp?https://www1.j-motto.co.jp/fw/dfw/gws/cgi-bin/aspioffice/iocjmtgw.cgi?cmd=login"
 
 driver.get(url)
@@ -90,19 +92,19 @@ userId_box.send_keys(JMOTTO_USERNAME)
 pass_box.send_keys(JMOTTO_PASSWORD)
 
 driver.save_screenshot('0before login.png')
-print "saved before login"
+print( "saved before login" )
 
 #login
 driver.find_element_by_name('NAME_DUMMY04').click()
 driver.implicitly_wait(10)
 
 driver.save_screenshot('1after login.png')
-print "saved after login"
+print( "saved after login" )
 
 driver.get("https://gws44.j-motto.co.jp/cgi-bin/JM0344760/dneo.cgi?")
 driver.implicitly_wait(10)
 driver.save_screenshot('1after login2.png')
-print "saved after login2"
+print( "saved after login2" )
 
 
 soup = BeautifulSoup(driver.page_source)
@@ -144,8 +146,21 @@ current_reminders = sc.api_call(
   token=SLACK_TOKEN
 )
 
+#[{u'creator': u'U2AGD5F8V', u'text': u'meeting', u'complete_ts': 0, u'user': u'U2AGD5F8V', u'time': 1509092700, u'recurring': False, u'id': u'Rm7QL555V4'}]
 filtered_reminders = list(filter((lambda x: (x.get('complete_ts') == 0) and x.get('recurring') == False),current_reminders.get('reminders')))
+print(filtered_reminders)
 
+text_id_dic = {}
+#make {text:ID} dictionary
+for reminder in filtered_reminders:
+    key = (reminder[u'text'], reminder[u'time'])
+    value = reminder[u'id']
+
+    if key not in text_id_dic:
+        text_id_dic[key] = []
+    print(text_id_dic)
+    text_id_dic[key].append( value )
+print(text_id_dic)
 
 
 for schedule_item in out:
@@ -158,6 +173,9 @@ for schedule_item in out:
     start_minus_5min = start_minus_5min + datetime.timedelta(hours=24) #compensate timezone
 
     unixtime = time.mktime( start_minus_5min.timetuple() )
+
+    #todo remove all reminders having same title and time
+
     response = post_remindar(SLACK_TOKEN,title,unixtime,SLACK_USER_ID)
     
     sc.api_call(
