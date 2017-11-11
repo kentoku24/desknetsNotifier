@@ -168,7 +168,6 @@ out = parse_schedule(str_for_today)
 
 current_reminders = sc.api_call(
   "reminders.list",
-  channel="#zzz-slack-sandbox",
   token=SLACK_TOKEN
 )
 
@@ -202,7 +201,7 @@ for schedule_item in out:
     print(title)
 
     start_minus_5min = start_time - datetime.timedelta(minutes=5)
-    start_minus_5min += datetime.timedelta(hours=24) #compensate timezone
+    #start_minus_5min += datetime.timedelta(hours=24) #compensate timezone
 
     unix_starttime = time.mktime( start_minus_5min.timetuple() )
 
