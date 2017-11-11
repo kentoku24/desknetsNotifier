@@ -19,6 +19,17 @@ import json
 import yaml
 from slackclient import SlackClient
 
+#defalut value
+SLACK_TOKEN = ''
+SLACK_USER_ID = ''
+#loading credentials
+with open("credentials.yaml","r") as stream:
+    try:
+        credentials = yaml.load(stream)
+        globals().update(credentials)
+    except yaml.YAMLError as exc:
+        print(exc)
+
 FORMAT = "%Y-%m-%d %H:%M:%S"
 
 def post_remindar(token,text,time,user):
@@ -28,6 +39,25 @@ def post_remindar(token,text,time,user):
     print("url", url)
     result = urllib2.urlopen(url).read()
     return result
+
+def delete_reminder(reminder_id):
+    sc = SlackClient(SLACK_TOKEN)
+    return sc.api_call(
+        "reminders.delete",
+        token=SLACK_TOKEN,
+        reminder=reminder_id
+    )
+
+def post_reminder(text,time):
+    sc = SlackClient(SLACK_TOKEN)
+    return sc.api_call(
+        "reminders.add",
+        token=SLACK_TOKEN,
+        text=text,
+        time=int(time),
+        user=SLACK_USER_ID,
+        pretty=1
+    )
 
 def parse_schedule(string):
     now = datetime.datetime.now()
@@ -59,18 +89,12 @@ class ScreenshotListener(AbstractEventListener):
         driver.get_screenshot_as_file(screenshot_name)
         print("Screenshot saved as '%s'" % screenshot_name)
 
-#main starts here
 
-#defalut value
-SLACK_TOKEN = ''
-SLACK_USER_ID = ''
-#loading credentials
-with open("credentials.yaml","r") as stream:
-    try:
-        credentials = yaml.load(stream)
-        globals().update(credentials)
-    except yaml.YAMLError as exc:
-        print(exc)
+
+
+##################main starts here##################################
+
+
 
 sc = SlackClient(SLACK_TOKEN)
 
@@ -106,12 +130,14 @@ driver.implicitly_wait(10)
 driver.save_screenshot('1after login2.png')
 print( "saved after login2" )
 
+driver.save_screenshot("after_login2.png")
+soup = BeautifulSoup(driver.page_source, "lxml")
 
-soup = BeautifulSoup(driver.page_source)
-
+print("parsing table")
 table = soup.find('table', {'class': 'cal-h-cell'})
 if(table):
     #do normal
+    print("it seems like I got a table")
     None
 else:
     print("going for page2 again")
@@ -150,16 +176,22 @@ current_reminders = sc.api_call(
 filtered_reminders = list(filter((lambda x: (x.get('complete_ts') == 0) and x.get('recurring') == False),current_reminders.get('reminders')))
 print(filtered_reminders)
 
-text_id_dic = {}
-#make {text:ID} dictionary
-for reminder in filtered_reminders:
-    key = (reminder[u'text'], reminder[u'time'])
-    value = reminder[u'id']
 
-    if key not in text_id_dic:
-        text_id_dic[key] = []
-    print(text_id_dic)
-    text_id_dic[key].append( value )
+#make {time:{title:[id, ...]}} dictionary of current reminders
+text_id_dic = {}
+for reminder in filtered_reminders:
+    _time = reminder[u'time']
+    _id = reminder[u'id']
+    _text = reminder[u'text']
+
+    if _time not in text_id_dic:
+        text_id_dic[_time] = {}
+    if _text not in text_id_dic[_time]: 
+        text_id_dic[_time][_text] = []
+
+    text_id_dic[_time][_text].append(_id)
+
+print("current reminders")
 print(text_id_dic)
 
 
@@ -170,14 +202,22 @@ for schedule_item in out:
     print(title)
 
     start_minus_5min = start_time - datetime.timedelta(minutes=5)
-    start_minus_5min = start_minus_5min + datetime.timedelta(hours=24) #compensate timezone
+    start_minus_5min += datetime.timedelta(hours=24) #compensate timezone
 
-    unixtime = time.mktime( start_minus_5min.timetuple() )
+    unix_starttime = time.mktime( start_minus_5min.timetuple() )
 
     #todo remove all reminders having same title and time
+    if((unix_starttime in text_id_dic) and (title in text_id_dic[unix_starttime]) ):
+        for _reminder_id in text_id_dic[unix_starttime][title]:
+            print("removing reminder title:", title, "id", _reminder_id)
+            delete_response = delete_reminder(_reminder_id)
+            print(delete_response)
 
-    response = post_remindar(SLACK_TOKEN,title,unixtime,SLACK_USER_ID)
-    
+    #response = post_remindar(SLACK_TOKEN,title,unixtime,SLACK_USER_ID)
+
+    print("posting reminder title:", title, " time:", start_minus_5min)
+    response = post_reminder(title,unix_starttime)
+
     sc.api_call(
       "chat.postEphemeral",
       channel="#zzz-slack-sandbox",
