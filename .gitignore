@@ -1,3 +1,4 @@
 
 *.png
 ghostdriver.log
+credentials.yaml
