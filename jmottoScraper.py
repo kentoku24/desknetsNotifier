@@ -7,7 +7,6 @@ import re
 import datetime
 import time
 
-import urllib2
 import urllib
 
 from selenium import webdriver
@@ -31,14 +30,6 @@ with open("credentials.yaml","r") as stream:
         print(exc)
 
 FORMAT = "%Y-%m-%d %H:%M:%S"
-
-def post_remindar(token,text,time,user):
-    text = "meeting"
-    url = "https://slack.com/api/reminders.add?token={}&text={}&time={}&user={}&pretty=1".format(token,text,int(time),user)
-    
-    print("url", url)
-    result = urllib2.urlopen(url).read()
-    return result
 
 def delete_reminder(reminder_id):
     sc = SlackClient(SLACK_TOKEN)
@@ -211,8 +202,6 @@ for schedule_item in out:
             print("removing reminder title:", title, "id", _reminder_id)
             delete_response = delete_reminder(_reminder_id)
             print(delete_response)
-
-    #response = post_remindar(SLACK_TOKEN,title,unixtime,SLACK_USER_ID)
 
     print("posting reminder title:", title, " time:", start_minus_5min)
     response = post_reminder(title,unix_starttime)
