@@ -4,6 +4,9 @@
 #selenium, pyyaml, slackclient, bs4, lxml
 # and phantomjs
 
+# get ChromeDriver from here
+# https://sites.google.com/a/chromium.org/chromedriver/downloads
+
 from __future__ import absolute_import, division, print_function
 
 import sys
@@ -18,6 +21,13 @@ import urllib
 from selenium import webdriver
 from selenium.webdriver.support.events import EventFiringWebDriver
 from selenium.webdriver.support.events import AbstractEventListener
+
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.options import Options
+
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 from bs4 import BeautifulSoup
 import json
@@ -95,9 +105,15 @@ class ScreenshotListener(AbstractEventListener):
 
 sc = SlackClient(SLACK_TOKEN)
 
-
-_driver = webdriver.PhantomJS()
+options = Options()
+options.add_argument('--headless')
+options.add_argument('--disable-gpu')
+options.add_argument('--window-size=1024,768')
+_driver = webdriver.Chrome(chrome_options=options)
 driver = EventFiringWebDriver(_driver, ScreenshotListener())
+
+#_driver = webdriver.PhantomJS()
+#driver = EventFiringWebDriver(_driver, ScreenshotListener())
 
 try:
     print( 'drive start' )
@@ -120,6 +136,15 @@ try:
     driver.find_element_by_name('NAME_DUMMY04').click()
     driver.implicitly_wait(10)
 
+    try:
+       element = WebDriverWait(driver, 10).until(
+          EC.presence_of_element_located((By.CSS_SELECTOR, ".portal-cal-body"))
+        )
+    finally:
+        None
+
+    #time.sleep(10)
+
     driver.save_screenshot('1after login.png')
     print( "saved after login" )
 
@@ -127,6 +152,9 @@ try:
     driver.implicitly_wait(10)
 
     driver.get("https://gws44.j-motto.co.jp/cgi-bin/JM0344760/dneo.cgi?")
+
+
+
     driver.implicitly_wait(10)
     driver.save_screenshot('1after login2.png')
     print( "saved after login2" )
