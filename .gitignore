@@ -2,3 +2,4 @@
 *.png
 ghostdriver.log
 credentials.yaml
+.vscode/
