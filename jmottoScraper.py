@@ -99,9 +99,7 @@ class ScreenshotListener(AbstractEventListener):
 
 
 
-##################main starts here##################################
-
-
+################## main starts here ##################################
 
 sc = SlackClient(SLACK_TOKEN)
 
@@ -134,32 +132,13 @@ try:
 
     #login
     driver.find_element_by_name('NAME_DUMMY04').click()
-    driver.implicitly_wait(10)
 
-    try:
-       element = WebDriverWait(driver, 10).until(
-          EC.presence_of_element_located((By.CSS_SELECTOR, ".portal-cal-body"))
-        )
-    finally:
-        None
-
-    #time.sleep(10)
+    #elemは特に使わないが、ページが表示されるまで待ちたいため入れている
+    elem = driver.find_element_by_css_selector(".portal-cal-body")
 
     driver.save_screenshot('1after login.png')
     print( "saved after login" )
 
-    driver.get("https://gws44.j-motto.co.jp/cgi-bin/aspioffice/iocjmtgw.cgi?cmd=login")
-    driver.implicitly_wait(10)
-
-    driver.get("https://gws44.j-motto.co.jp/cgi-bin/JM0344760/dneo.cgi?")
-
-
-
-    driver.implicitly_wait(10)
-    driver.save_screenshot('1after login2.png')
-    print( "saved after login2" )
-
-    driver.save_screenshot("after_login2.png")
     soup = BeautifulSoup(driver.page_source, "lxml")
 
     print("parsing table")
@@ -171,7 +150,6 @@ try:
     else:
         print("going for page2 again")
         driver.get("https://gws44.j-motto.co.jp/cgi-bin/JM0344760/dneo.cgi")
-        driver.implicitly_wait(10)
 except:
      print("Unexpected error:", sys.exc_info()[0])
      raise
@@ -237,7 +215,6 @@ for schedule_item in out:
     print(title)
 
     start_minus_5min = start_time - datetime.timedelta(minutes=5)
-    #start_minus_5min += datetime.timedelta(hours=24) #compensate timezone
 
     unix_starttime = time.mktime( start_minus_5min.timetuple() )
 
