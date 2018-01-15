@@ -150,6 +150,26 @@ try:
     else:
         print("going for page2 again")
         driver.get("https://gws44.j-motto.co.jp/cgi-bin/JM0344760/dneo.cgi")
+
+    try:
+    #出社ボタンを押す
+        driver.find_element_by_css_selector("th.portal-timecard-start > input:nth-child(1)").click()
+        driver.save_screenshot('2after_shussha.png')
+        print( "saved 2after_shussha.png" )
+    except:
+        #import traceback
+        #traceback.print_exc()
+        print("shussha button is not visible")
+
+    try:
+    #退社ボタンを押す
+        #driver.find_element_by_css_selector("th.portal-timecard-end > input:nth-child(1)").click()
+        #driver.save_screenshot('2after_taisha.png')
+        print( "saved 2after_taisha.png" )
+    except:
+        #import traceback
+        #traceback.print_exc()
+        print("taisha button is not visible")
 except:
      print("Unexpected error:", sys.exc_info()[0])
      raise
