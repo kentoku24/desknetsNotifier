@@ -220,15 +220,12 @@ for schedule_item in out:
 
     unix_starttime = time.mktime( start_minus_5min.timetuple() )
 
-    #todo remove all reminders having same title and time
+    #post a reminder iff there are no dupicating reminders
     if((unix_starttime in text_id_dic) and (title in text_id_dic[unix_starttime]) ):
-        for _reminder_id in text_id_dic[unix_starttime][title]:
-            print("removing reminder title:", title, "id", _reminder_id)
-            delete_response = delete_reminder(_reminder_id)
-            print(delete_response)
-
-    print("posting reminder title:", title, " time:", start_minus_5min)
-    response = post_reminder(title,unix_starttime)
+        None
+    else:
+        print("posting reminder title:", title, " time:", start_minus_5min)
+        response = post_reminder(title,unix_starttime)
 
     sc.api_call(
       "chat.postEphemeral",
