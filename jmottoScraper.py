@@ -131,107 +131,107 @@ def loginDesknets(driver):
     return driver
 
 ################## main starts here ##################################
+if __name__ == "__main__":
+    sc = SlackClient(SLACK_TOKEN)
 
-sc = SlackClient(SLACK_TOKEN)
+    driver = makeDriver()
+    print( 'driver created' )
 
-driver = makeDriver()
-print( 'driver created' )
+    try:
 
-try:
+        loginDesknets(driver)
 
-    loginDesknets(driver)
+        soup = BeautifulSoup(driver.page_source, "lxml")
 
-    soup = BeautifulSoup(driver.page_source, "lxml")
+        print("parsing table")
+        table = soup.find('table', {'class': 'cal-h-cell'})
+        if(table):
+            #do normal
+            print("acquired a table")
+        else:
+            print("failed to get a table")
+            raise
 
-    print("parsing table")
-    table = soup.find('table', {'class': 'cal-h-cell'})
-    if(table):
-        #do normal
-        print("acquired a table")
-    else:
-        print("failed to get a table")
+    except:
+        print("Unexpected error:", sys.exc_info()[0])
         raise
-
-except:
-     print("Unexpected error:", sys.exc_info()[0])
-     raise
-finally:
-    driver.quit()
+    finally:
+        driver.quit()
 
 
-rows = table.find_all() #this raises AttributeError: 'NoneType' object has no attribute 'find_all'
-lists = []
-for row in rows:
-    lst = []
-    cols = row.find_all(['td','th'])
-    cols = [ele.text.strip() for ele in cols]
-    lst.append([ele for ele in cols if ele])
-    lists.append(lst)
+    rows = table.find_all() #this raises AttributeError: 'NoneType' object has no attribute 'find_all'
+    lists = []
+    for row in rows:
+        lst = []
+        cols = row.find_all(['td','th'])
+        cols = [ele.text.strip() for ele in cols]
+        lst.append([ele for ele in cols if ele])
+        lists.append(lst)
 
-str_for_today = lists[0][0][0]
+    str_for_today = lists[0][0][0]
 
-#text = json.dumps(lists, sort_keys=True, ensure_ascii=False, indent=4)
+    #text = json.dumps(lists, sort_keys=True, ensure_ascii=False, indent=4)
 
-out = parse_schedule(str_for_today)
-#out_text = json.dumps(out, sort_keys=True, ensure_ascii=False, indent=4)
+    out = parse_schedule(str_for_today)
+    #out_text = json.dumps(out, sort_keys=True, ensure_ascii=False, indent=4)
 
-#json.dump(lists, out, indent=4)
-#with open('out.json', 'w') as fh:
-#  fh.write(text.encode("utf-8"))
+    #json.dump(lists, out, indent=4)
+    #with open('out.json', 'w') as fh:
+    #  fh.write(text.encode("utf-8"))
 
-#with open('out2.json', 'w') as fh:
-#  fh.write(out_text.encode("utf-8"))
+    #with open('out2.json', 'w') as fh:
+    #  fh.write(out_text.encode("utf-8"))
 
-current_reminders = sc.api_call(
-  "reminders.list",
-  token=SLACK_TOKEN
-)
-
-#[{u'creator': u'U2AGD5F8V', u'text': u'meeting', u'complete_ts': 0, u'user': u'U2AGD5F8V', u'time': 1509092700, u'recurring': False, u'id': u'Rm7QL555V4'}]
-filtered_reminders = list(filter((lambda x: (x.get('complete_ts') == 0) and x.get('recurring') == False),current_reminders.get('reminders')))
-print(filtered_reminders)
-
-
-#make {time:{title:[id, ...]}} dictionary of current reminders
-text_id_dic = {}
-for reminder in filtered_reminders:
-    _time = reminder[u'time']
-    _id = reminder[u'id']
-    _text = reminder[u'text']
-
-    if _time not in text_id_dic:
-        text_id_dic[_time] = {}
-    if _text not in text_id_dic[_time]: 
-        text_id_dic[_time][_text] = []
-
-    text_id_dic[_time][_text].append(_id)
-
-print("current reminders")
-print(text_id_dic)
-
-
-for schedule_item in out:
-    start_time, end_time, title = schedule_item
-    print(start_time)
-    print(end_time)
-    print(title)
-
-    start_minus_5min = start_time - datetime.timedelta(minutes=5)
-
-    unix_starttime = time.mktime( start_minus_5min.timetuple() )
-
-    #post a reminder iff there are no dupicating reminders
-    if((unix_starttime in text_id_dic) and (title in text_id_dic[unix_starttime]) ):
-        None
-    else:
-        print("posting reminder title:", title, " time:", start_minus_5min)
-        response = post_reminder(title,unix_starttime)
-
-    sc.api_call(
-      "chat.postEphemeral",
-      channel="#zzz-slack-sandbox",
-      text=title,
-      user=SLACK_USER_ID
+    current_reminders = sc.api_call(
+    "reminders.list",
+    token=SLACK_TOKEN
     )
-    
-    print(response)
+
+    #[{u'creator': u'U2AGD5F8V', u'text': u'meeting', u'complete_ts': 0, u'user': u'U2AGD5F8V', u'time': 1509092700, u'recurring': False, u'id': u'Rm7QL555V4'}]
+    filtered_reminders = list(filter((lambda x: (x.get('complete_ts') == 0) and x.get('recurring') == False),current_reminders.get('reminders')))
+    print(filtered_reminders)
+
+
+    #make {time:{title:[id, ...]}} dictionary of current reminders
+    text_id_dic = {}
+    for reminder in filtered_reminders:
+        _time = reminder[u'time']
+        _id = reminder[u'id']
+        _text = reminder[u'text']
+
+        if _time not in text_id_dic:
+            text_id_dic[_time] = {}
+        if _text not in text_id_dic[_time]: 
+            text_id_dic[_time][_text] = []
+
+        text_id_dic[_time][_text].append(_id)
+
+    print("current reminders")
+    print(text_id_dic)
+
+
+    for schedule_item in out:
+        start_time, end_time, title = schedule_item
+        print(start_time)
+        print(end_time)
+        print(title)
+
+        start_minus_5min = start_time - datetime.timedelta(minutes=5)
+
+        unix_starttime = time.mktime( start_minus_5min.timetuple() )
+
+        #post a reminder iff there are no dupicating reminders
+        if((unix_starttime in text_id_dic) and (title in text_id_dic[unix_starttime]) ):
+            None
+        else:
+            print("posting reminder title:", title, " time:", start_minus_5min)
+            response = post_reminder(title,unix_starttime)
+
+        sc.api_call(
+        "chat.postEphemeral",
+        channel="#zzz-slack-sandbox",
+        text=title,
+        user=SLACK_USER_ID
+        )
+        
+        print(response)
