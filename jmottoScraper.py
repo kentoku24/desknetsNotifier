@@ -96,25 +96,15 @@ class ScreenshotListener(AbstractEventListener):
         driver.get_screenshot_as_file(screenshot_name)
         print("Screenshot saved as '%s'" % screenshot_name)
 
+def makeDriver():
+    options = Options()
+    options.add_argument('--headless')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--window-size=1024,768')
+    _driver = webdriver.Chrome(chrome_options=options)
+    return EventFiringWebDriver(_driver, ScreenshotListener())
 
-
-
-################## main starts here ##################################
-
-sc = SlackClient(SLACK_TOKEN)
-
-options = Options()
-options.add_argument('--headless')
-options.add_argument('--disable-gpu')
-options.add_argument('--window-size=1024,768')
-_driver = webdriver.Chrome(chrome_options=options)
-driver = EventFiringWebDriver(_driver, ScreenshotListener())
-
-#_driver = webdriver.PhantomJS()
-#driver = EventFiringWebDriver(_driver, ScreenshotListener())
-
-try:
-    print( 'drive start' )
+def loginDesknets(driver):
     url = "https://www1.j-motto.co.jp/fw/dfw/po80/portal/jsp/J10201.jsp?https://www1.j-motto.co.jp/fw/dfw/gws/cgi-bin/aspioffice/iocjmtgw.cgi?cmd=login"
 
     driver.get(url)
@@ -138,6 +128,18 @@ try:
 
     driver.save_screenshot('1after login.png')
     print( "saved after login" )
+    return driver
+
+################## main starts here ##################################
+
+sc = SlackClient(SLACK_TOKEN)
+
+driver = makeDriver()
+print( 'driver created' )
+
+try:
+
+    loginDesknets(driver)
 
     soup = BeautifulSoup(driver.page_source, "lxml")
 
@@ -145,11 +147,10 @@ try:
     table = soup.find('table', {'class': 'cal-h-cell'})
     if(table):
         #do normal
-        print("it seems like I got a table")
-        None
+        print("acquired a table")
     else:
-        print("going for page2 again")
-        driver.get("https://gws44.j-motto.co.jp/cgi-bin/JM0344760/dneo.cgi")
+        print("failed to get a table")
+        raise
 
 except:
      print("Unexpected error:", sys.exc_info()[0])
