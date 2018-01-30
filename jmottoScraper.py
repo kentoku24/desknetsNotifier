@@ -96,9 +96,10 @@ class ScreenshotListener(AbstractEventListener):
         driver.get_screenshot_as_file(screenshot_name)
         print("Screenshot saved as '%s'" % screenshot_name)
 
-def makeDriver():
+def makeDriver(*, headless=True):
     options = Options()
-    options.add_argument('--headless')
+    if(headless):
+        options.add_argument('--headless')
     options.add_argument('--disable-gpu')
     options.add_argument('--window-size=1024,768')
     _driver = webdriver.Chrome(chrome_options=options)
@@ -130,6 +131,37 @@ def loginDesknets(driver):
     print( "saved after login" )
     return driver
 
+#スケジュールを取得して[{start:時間, title:タイトル, location:場所}, ...] の形式で返す
+def getSchedule(driver):
+    nth_calendar_item_selector = '.co-today > div:nth-child(2) > div:nth-child(%d)'
+
+    #getting size of items for today
+    size = len(driver.find_elements_by_css_selector('.co-today > div:nth-child(2) > div'))
+
+    calendar_items = []
+    for i in range(1, size+1):
+        #clicking calendar item
+        ith_calendar_item_selector = nth_calendar_item_selector % i
+        driver.find_element_by_css_selector(ith_calendar_item_selector).click()
+
+        time.sleep(1)
+
+        #detail-title
+        title = driver.find_element_by_css_selector('.cal-ref-pop-up-titlebar').text
+
+        #detail-time
+        start_time = driver.find_element_by_css_selector("#cal-ref-pop-up > div.co-baloon-body.jcal-ref-pop-up-frame > table > tbody > tr:nth-child(1) > td").text
+
+        #detail-location
+        location = driver.find_element_by_css_selector("#cal-ref-pop-up > div.co-baloon-body.jcal-ref-pop-up-frame > table > tbody > tr:nth-child(3) > td").text
+
+        #clicking position which does nothing but closing detail window
+        driver.find_element_by_css_selector('#dn-h-search > form > input.searchbox').click()
+
+        print("title:%s start_time:%s location:%s" % (title,start_time,location) )
+        calendar_items.append( (title,start_time,location) )
+    return calendar_items
+
 ################## main starts here ##################################
 if __name__ == "__main__":
     sc = SlackClient(SLACK_TOKEN)
@@ -140,6 +172,8 @@ if __name__ == "__main__":
     try:
 
         loginDesknets(driver)
+
+        schedule = getSchedule(driver)
 
         soup = BeautifulSoup(driver.page_source, "lxml")
 
