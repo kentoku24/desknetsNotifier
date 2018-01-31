@@ -20,3 +20,6 @@
   j.loginDesknets(d)
   s = j.getSchedule(d)
   ```
+ 
+- 備忘録
+  * コミットメッセージは[こちら](https://qiita.com/numanomanu/items/45dd285b286a1f7280ed)をお手本に書きましょう
