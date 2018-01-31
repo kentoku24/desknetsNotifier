@@ -3,3 +3,4 @@
 ghostdriver.log
 credentials.yaml
 .vscode/
+__pycache__/
