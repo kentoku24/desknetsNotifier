@@ -28,6 +28,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import NoSuchElementException
 
 from bs4 import BeautifulSoup
 import json
@@ -66,28 +67,16 @@ def post_reminder(text,time):
         pretty=1
     )
 
-def parse_schedule(string):
+# get "HH:MM - HH:MM" string and return a tuple that contains two time objects
+def parse_start_end(start_end):
+
     now = datetime.datetime.now()
-    time_str = now.strftime("%Y-%m-%d ")
-    
-    p = re.compile("[0-9][0-9]:[0-9][0-9] - [0-9][0-9]:[0-9][0-9]")
-    titles = p.split(string)
-    day = titles[0]
-    del titles[0]
-    times  = re.findall(p, string)
+    date_str = now.strftime("%Y-%m-%d ")
+    start, end = start_end.split(" - ")
+    start_time = datetime.datetime.strptime(date_str + start, "%Y-%m-%d " + "%H:%M")
+    end_time = datetime.datetime.strptime(date_str + end, "%Y-%m-%d " + "%H:%M")
 
-    out = []
-    for idx, val in enumerate(times):
-        title = titles[idx]
-        start_end = times[idx]
-        start, end = start_end.split(" - ")
-        start_time = datetime.datetime.strptime(time_str + start, "%Y-%m-%d " + "%H:%M")
-        end_time = datetime.datetime.strptime(time_str + end, "%Y-%m-%d " + "%H:%M")
-        print(start_time, end_time, title)
-
-        row = [start_time, end_time, title]
-        out.append(row)
-    return out
+    return (start_time,end_time)
 
 
 class ScreenshotListener(AbstractEventListener):
@@ -96,9 +85,10 @@ class ScreenshotListener(AbstractEventListener):
         driver.get_screenshot_as_file(screenshot_name)
         print("Screenshot saved as '%s'" % screenshot_name)
 
-def makeDriver():
+def makeDriver(*, headless=True):
     options = Options()
-    options.add_argument('--headless')
+    if(headless):
+        options.add_argument('--headless')
     options.add_argument('--disable-gpu')
     options.add_argument('--window-size=1024,768')
     _driver = webdriver.Chrome(chrome_options=options)
@@ -130,6 +120,54 @@ def loginDesknets(driver):
     print( "saved after login" )
     return driver
 
+#スケジュールを取得して[{start:時間, title:タイトル, location:場所}, ...] の形式で返す
+def getSchedule(driver):
+    nth_calendar_item_selector = '.co-today > div:nth-child(2) > div:nth-child(%d)'
+    nth_duration = '#portal-content-1 > div.portal-content-body > div > div.portal-cal-body > div:nth-child(1) > table > tbody > tr > td.cal-day.co-today > div > div:nth-child(%d) > a > span.cal-term-text'
+
+    #getting size of items for today
+    size = len(driver.find_elements_by_css_selector('.co-today > div:nth-child(2) > div'))
+
+    driver.implicitly_wait(2)
+    calendar_items = []
+    for i in range(1, size+1):
+        #clicking calendar item
+        ith_calendar_item_selector = nth_calendar_item_selector % i
+        driver.find_element_by_css_selector(ith_calendar_item_selector).click()
+
+        #because implicit wait did not cut
+        time.sleep(1)
+
+        #detail-title
+        title = driver.find_element_by_css_selector('.cal-ref-pop-up-titlebar').text
+
+        #duration
+        ith_duration = nth_duration % i
+        duration = driver.find_element_by_css_selector(ith_duration).text
+        start_time, end_time = parse_start_end(duration)
+
+        #detail-location
+        try:
+            location1 = driver.find_element_by_css_selector("#cal-ref-pop-up > div.co-baloon-body.jcal-ref-pop-up-frame > table > tbody > tr:nth-child(3) > td").text
+        except NoSuchElementException:
+            print("location1 is not found")
+            location1 = "[blank location]"
+        try:
+            location2 = driver.find_element_by_css_selector("#cal-ref-pop-up > div.co-baloon-body.jcal-ref-pop-up-frame > table > tbody > tr:nth-child(4) > td").text
+        except NoSuchElementException:
+            print("location2 is not found")
+            location2 = "[blank location]"
+        location = "%s %s" % (location1, location2)
+
+        #clicking position which does nothing but closing detail window
+        driver.find_element_by_css_selector('#dn-h-search > form > input.searchbox').click()
+
+        print("title:%s, start_time:%s, end_time:%s, location:%s" % (title,start_time,end_time,location) )
+        calendar_items.append( (title,start_time,end_time,location) )
+
+    driver.implicitly_wait(10)
+    return calendar_items
+
 ################## main starts here ##################################
 if __name__ == "__main__":
     sc = SlackClient(SLACK_TOKEN)
@@ -141,46 +179,13 @@ if __name__ == "__main__":
 
         loginDesknets(driver)
 
-        soup = BeautifulSoup(driver.page_source, "lxml")
-
-        print("parsing table")
-        table = soup.find('table', {'class': 'cal-h-cell'})
-        if(table):
-            #do normal
-            print("acquired a table")
-        else:
-            print("failed to get a table")
-            raise
+        schedule_items = getSchedule(driver)
 
     except:
         print("Unexpected error:", sys.exc_info()[0])
         raise
     finally:
         driver.quit()
-
-
-    rows = table.find_all() #this raises AttributeError: 'NoneType' object has no attribute 'find_all'
-    lists = []
-    for row in rows:
-        lst = []
-        cols = row.find_all(['td','th'])
-        cols = [ele.text.strip() for ele in cols]
-        lst.append([ele for ele in cols if ele])
-        lists.append(lst)
-
-    str_for_today = lists[0][0][0]
-
-    #text = json.dumps(lists, sort_keys=True, ensure_ascii=False, indent=4)
-
-    out = parse_schedule(str_for_today)
-    #out_text = json.dumps(out, sort_keys=True, ensure_ascii=False, indent=4)
-
-    #json.dump(lists, out, indent=4)
-    #with open('out.json', 'w') as fh:
-    #  fh.write(text.encode("utf-8"))
-
-    #with open('out2.json', 'w') as fh:
-    #  fh.write(out_text.encode("utf-8"))
 
     current_reminders = sc.api_call(
     "reminders.list",
@@ -190,7 +195,6 @@ if __name__ == "__main__":
     #[{u'creator': u'U2AGD5F8V', u'text': u'meeting', u'complete_ts': 0, u'user': u'U2AGD5F8V', u'time': 1509092700, u'recurring': False, u'id': u'Rm7QL555V4'}]
     filtered_reminders = list(filter((lambda x: (x.get('complete_ts') == 0) and x.get('recurring') == False),current_reminders.get('reminders')))
     print(filtered_reminders)
-
 
     #make {time:{title:[id, ...]}} dictionary of current reminders
     text_id_dic = {}
@@ -210,27 +214,28 @@ if __name__ == "__main__":
     print(text_id_dic)
 
 
-    for schedule_item in out:
-        start_time, end_time, title = schedule_item
-        print(start_time)
-        print(end_time)
-        print(title)
+    for schedule_item in schedule_items:
+        #start_time, end_time, title = schedule_item
+        title, start_time, end_time, location = schedule_item
+
+        print("title:%s, start_time:%s, end_time:%s, location:%s" % (title,start_time,end_time,location) )
+        message = "%s @%s" % (title, location)
 
         start_minus_5min = start_time - datetime.timedelta(minutes=5)
 
         unix_starttime = time.mktime( start_minus_5min.timetuple() )
 
         #post a reminder iff there are no dupicating reminders
-        if((unix_starttime in text_id_dic) and (title in text_id_dic[unix_starttime]) ):
+        if((unix_starttime in text_id_dic) and (message in text_id_dic[unix_starttime]) ):
             None
         else:
-            print("posting reminder title:", title, " time:", start_minus_5min)
-            response = post_reminder(title,unix_starttime)
+            print("posting reminder message:", message, " time:", start_minus_5min)
+            response = post_reminder(message,unix_starttime)
 
         sc.api_call(
         "chat.postEphemeral",
         channel="#zzz-slack-sandbox",
-        text=title,
+        text=message,
         user=SLACK_USER_ID
         )
         
