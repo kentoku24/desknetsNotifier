@@ -231,6 +231,7 @@ if __name__ == "__main__":
         else:
             print("posting reminder message:", message, " time:", start_minus_5min)
             response = post_reminder(message,unix_starttime)
+            print(response)
 
         sc.api_call(
         "chat.postEphemeral",
@@ -238,5 +239,3 @@ if __name__ == "__main__":
         text=message,
         user=SLACK_USER_ID
         )
-        
-        print(response)
