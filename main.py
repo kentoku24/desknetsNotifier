@@ -90,7 +90,7 @@ def makeDriver(*, headless=True):
     if(headless):
         options.add_argument('--headless')
     options.add_argument('--disable-gpu')
-    options.add_argument('--window-size=1024,768')
+    options.add_argument('--window-size=1280,800')
     _driver = webdriver.Chrome(chrome_options=options)
     return EventFiringWebDriver(_driver, ScreenshotListener())
 
