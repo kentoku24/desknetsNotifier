@@ -6,7 +6,7 @@
     - JMOTTO_GROUP JMOTTO_USERNAME JMOTTO_PASSWORD これらには自分のJmottoの情報を記入してください。
     - SLACK_TOKEN は[こちら](https://api.slack.com/custom-integrations/legacy-tokens)から取得できます
     - SLACK_USER_ID は [users.info](https://api.slack.com/methods/users.info/test) あたりで自分のユーザ名リンクをクリックすると欄が埋まるので、それを使うと良いと思います。
-  * 
+  * backgroundRunner.vbsをタスクスケジューラに登録し、1時間ごとに実行、などにすれば直前に入った予定にも対応できます。
 
 - 前提条件
   * Chrome Canaryを導入したWindows端末で動作確認をしていますので、Windows版のChromeDriverを同梱しています。
