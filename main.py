@@ -159,6 +159,9 @@ def getSchedule(driver):
             location2 = "[blank location]"
         location = "%s %s" % (location1, location2)
 
+        driver.save_screenshot('2each item_%d.png' % i)
+        print('saved 2each calendar item_%d.png' % i)
+
         #clicking position which does nothing but closing detail window
         driver.find_element_by_css_selector('#dn-h-search > form > input.searchbox').click()
 
