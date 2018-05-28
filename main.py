@@ -35,6 +35,9 @@ import json
 import yaml
 from slackclient import SlackClient
 
+#FOR REAL USE set this to be True to hide Chrome screen
+HEADLESSNESS = True
+
 #defalut value
 SLACK_TOKEN = ''
 SLACK_USER_ID = ''
@@ -131,6 +134,9 @@ def getSchedule(driver):
     driver.implicitly_wait(2)
     calendar_items = []
     for i in range(1, size+1):
+        #clicking position which does nothing but closing detail window
+        driver.find_element_by_css_selector('#dn-h-search > form > input.searchbox').click()
+
         #clicking calendar item
         ith_calendar_item_selector = nth_calendar_item_selector % i
         driver.find_element_by_css_selector(ith_calendar_item_selector).click()
@@ -141,10 +147,14 @@ def getSchedule(driver):
         #detail-title
         title = driver.find_element_by_css_selector('.cal-ref-pop-up-titlebar').text
 
-        #duration
-        ith_duration = nth_duration % i
-        duration = driver.find_element_by_css_selector(ith_duration).text
-        start_time, end_time = parse_start_end(duration)
+        try:
+            #duration
+            ith_duration = nth_duration % i
+            duration = driver.find_element_by_css_selector(ith_duration).text
+            start_time, end_time = parse_start_end(duration)
+        except NoSuchElementException:
+            print("one of necessary elements are not found, skipping")
+            continue
 
         #detail-location
         try:
@@ -162,9 +172,6 @@ def getSchedule(driver):
         driver.save_screenshot('2each item_%d.png' % i)
         print('saved 2each calendar item_%d.png' % i)
 
-        #clicking position which does nothing but closing detail window
-        driver.find_element_by_css_selector('#dn-h-search > form > input.searchbox').click()
-
         print("title:%s, start_time:%s, end_time:%s, location:%s" % (title,start_time,end_time,location) )
         calendar_items.append( (title,start_time,end_time,location) )
 
@@ -175,7 +182,7 @@ def getSchedule(driver):
 if __name__ == "__main__":
     sc = SlackClient(SLACK_TOKEN)
 
-    driver = makeDriver()
+    driver = makeDriver(headless=HEADLESSNESS)
     print( 'driver created' )
 
     try:
@@ -188,7 +195,8 @@ if __name__ == "__main__":
         print("Unexpected error:", sys.exc_info()[0])
         raise
     finally:
-        driver.quit()
+        if HEADLESSNESS:
+            driver.quit()
 
     current_reminders = sc.api_call(
     "reminders.list",
