@@ -83,8 +83,12 @@ def parse_start_end(start_end):
 
 
 class ScreenshotListener(AbstractEventListener):
+    #count for error screenshots
+    exception_screenshot_count = 0
+
     def on_exception(self, exception, driver):
-        screenshot_name = "00_exception.png"
+        screenshot_name = "00_exception_{:0>2}.png".format(ScreenshotListener.exception_screenshot_count)
+        ScreenshotListener.exception_screenshot_count += 1
         driver.get_screenshot_as_file(screenshot_name)
         print("Screenshot saved as '%s'" % screenshot_name)
 
